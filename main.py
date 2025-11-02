@@ -1,28 +1,32 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 from crewai import Crew, Task
-from agents.planner import planner
-from agents.researcher import researcher
 from agents.coder import coder
 
 def run_devcrew_task(user_input: str) -> str:
-    """Executa o fluxo CrewAI e retorna uma string com o resultado."""
+    """
+    Executa o fluxo principal do DevCrew-AI.
+    Permite gerar código em Golang e interagir com bancos SQLite.
+    """
+    # Detecta tipo de intenção (simples, mas eficaz)
+    lower_input = user_input.lower()
+    if any(x in lower_input for x in ["create table", "insert into", "select", "sqlite", "banco", "tabela", "usuário", "users"]):
+        expected = "Interação com o banco SQLite: criação, inserção ou listagem de dados."
+    elif any(x in lower_input for x in ["golang", "go code", "package main", "func main", "api", "endpoint", "struct"]):
+        expected = "Geração de código em Golang conforme solicitado."
+    else:
+        expected = "Ação relacionada a código ou banco de dados."
+
+    # Define a task dinâmica
     task = Task(
         description=user_input,
-        expected_output="Código Go e modelo de dados criado no SQLite.",
-        agent=coder,  # agora o Coder é quem executa a ação
+        expected_output=expected,
+        agent=coder,
     )
 
-    crew = Crew(
-        agents=[planner, researcher, coder],
-        tasks=[task],
-        verbose=True
-    )
-
+    # Executa o Crew
+    crew = Crew(agents=[coder], tasks=[task], verbose=True)
     result = crew.kickoff(inputs={"prompt": user_input})
 
-    # Retornar texto puro
+    # Normaliza o retorno
     if hasattr(result, "raw"):
         return str(result.raw)
     elif hasattr(result, "output"):
